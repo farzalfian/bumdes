@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { ShoppingCart, ChevronDown } from "lucide-react"
+import { ShoppingCart, ChevronDown, Store } from "lucide-react"
 import { Button } from "./ui/button"
 
 export default function Header() {
@@ -42,14 +42,14 @@ export default function Header() {
           <Link href="/" className="flex items-center gap-3 group">
             <div className="relative">
               <div className="w-10 h-10 bg-linear-to-br from-secondary via-tertiary to-secondary rounded-xl flex items-center justify-center font-bold text-primary shadow-lg group-hover:scale-110 transition-all">
-                <span className="text-lg">B</span>
+                <span className="text-lg"><Store /></span>
               </div>
             </div>
             <div className="hidden sm:block">
               <h1 className="text-xl font-bold group-hover:text-secondary transition-colors">
-                BUMDES
+                BUMDES KUTABIMA
               </h1>
-              <p className="text-xs text-tertiary">Badan Usaha Milik Desa</p>
+              <p className="text-xs text-tertiary">Badan Usaha Milik Desa Kutabima</p>
             </div>
           </Link>
 

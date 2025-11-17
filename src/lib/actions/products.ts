@@ -27,31 +27,58 @@ export async function getAllProducts(): Promise<Product[]> {
     const products = await ProductModel.find({}).sort({ createdAt: -1 }).lean()
     return products.map(transformProductDoc)
   } catch (error) {
-    console.error("[v0] Error fetching all products:", error)
+    console.error("Error fetching all products:", error)
     return []
   }
 }
 
-export async function searchProducts(query: string): Promise<Product[]> {
+export async function searchProducts(options: {
+  search?: string;
+  category?: string;
+  page?: number;
+  max?: number;
+}): Promise<{ data: Product[]; total: number; page: number; max: number }> {
   try {
     await dbConnect()
-    const searchQuery = {
-      $or: [
-        { name: { $regex: query, $options: "i" } },
-        { description: { $regex: query, $options: "i" } },
-        { category: { $regex: query, $options: "i" } },
-      ],
-    }
-    const products = await ProductModel.find(searchQuery).sort({ createdAt: -1 }).lean()
-    return products.map(transformProductDoc)
-  } catch (error) {
-    console.error("[v0] Error searching products:", error)
-    return []
-  }
-}
 
-export async function getProducts(): Promise<Product[]> {
-  return getAllProducts()
+    const { search = "", category = "", page = 1, max = 10 } = options
+
+    const query: any = {}
+
+    if (search.trim() !== "") {
+      query.$or = [
+        { name: { $regex: search, $options: "i" } },
+        { description: { $regex: search, $options: "i" } },
+        { category: { $regex: search, $options: "i" } },
+      ]
+    }
+
+    if (category.trim() !== "") {
+      query.category = { $regex: category, $options: "i" }
+    }
+
+    const skip = (page - 1) * max
+
+    const [products, total] = await Promise.all([
+      ProductModel.find(query)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(max)
+        .lean(),
+
+      ProductModel.countDocuments(query),
+    ])
+
+    return {
+      data: products.map(transformProductDoc),
+      total,
+      page,
+      max,
+    }
+  } catch (error) {
+    console.error("Error searching products:", error)
+    return { data: [], total: 0, page: 1, max: 10 }
+  }
 }
 
 export async function createProduct(data: Omit<Product, "id" | "createdAt" | "updatedAt">) {
@@ -60,12 +87,10 @@ export async function createProduct(data: Omit<Product, "id" | "createdAt" | "up
     let thumbnailURL = data.thumbnailURL
     let imageURLs = data.imageURL
 
-    // Handle thumbnail upload if it's base64
     if (thumbnailURL && thumbnailURL.startsWith("data:")) {
       thumbnailURL = await uploadBase64Image(thumbnailURL, `thumbnail_${Date.now()}.jpg`)
     }
 
-    // Handle image uploads if they're base64
     if (imageURLs && imageURLs.length > 0) {
       const base64Images = imageURLs.filter((url) => url.startsWith("data:"))
       if (base64Images.length > 0) {
@@ -87,7 +112,7 @@ export async function createProduct(data: Omit<Product, "id" | "createdAt" | "up
     const saved = await product.save()
     return transformProductDoc(saved.toObject())
   } catch (error) {
-    console.error("[v0] Error creating product:", error)
+    console.error("Error creating product:", error)
     throw new Error("Failed to create product")
   }
 }
@@ -98,12 +123,10 @@ export async function updateProduct(id: string, data: Omit<Product, "id" | "crea
     let thumbnailURL = data.thumbnailURL
     let imageURLs = data.imageURL
 
-    // Handle thumbnail upload if it's base64
     if (thumbnailURL && thumbnailURL.startsWith("data:")) {
       thumbnailURL = await uploadBase64Image(thumbnailURL, `thumbnail_${Date.now()}.jpg`)
     }
 
-    // Handle image uploads if they're base64
     if (imageURLs && imageURLs.length > 0) {
       const base64Images = imageURLs.filter((url) => url.startsWith("data:"))
       if (base64Images.length > 0) {
@@ -126,7 +149,7 @@ export async function updateProduct(id: string, data: Omit<Product, "id" | "crea
     )
     return updated ? transformProductDoc(updated.toObject()) : null
   } catch (error) {
-    console.error("[v0] Error updating product:", error)
+    console.error("Error updating product:", error)
     throw new Error("Failed to update product")
   }
 }
@@ -137,7 +160,7 @@ export async function deleteProduct(id: string) {
     await ProductModel.deleteOne({ id })
     return { success: true }
   } catch (error) {
-    console.error("[v0] Error deleting product:", error)
+    console.error("Error deleting product:", error)
     throw new Error("Failed to delete product")
   }
 }

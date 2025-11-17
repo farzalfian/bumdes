@@ -7,6 +7,7 @@ import ProductModal from "../modals/ProductModal"
 import { deleteProduct, createProduct, updateProduct, searchProducts, getAllProducts } from "@/lib/actions/products"
 import { useDebounce } from "@/hooks/use-debounce"
 import type { Product } from "@/types"
+import Image from "next/image"
 
 interface ProductsTabProps {
   initialProducts: Product[]
@@ -171,9 +172,11 @@ export default function ProductsTab({ initialProducts }: ProductsTabProps) {
                     className="bg-card border border-border rounded-lg overflow-hidden hover:shadow-lg transition"
                   >
                     <div className="aspect-video bg-muted overflow-hidden">
-                      <img
+                      <Image
                         src={product.thumbnailURL || "/placeholder.svg"}
                         alt={product.name}
+                        height={1080}
+                        width={1080}
                         className="w-full h-full object-cover"
                       />
                     </div>
@@ -228,9 +231,11 @@ export default function ProductsTab({ initialProducts }: ProductsTabProps) {
                     exit={{ opacity: 0, x: -20 }}
                     className="flex items-center gap-4 p-4 bg-card border border-border rounded-lg hover:shadow-md transition"
                   >
-                    <img
+                    <Image
                       src={product.thumbnailURL || "/placeholder.svg"}
                       alt={product.name}
+                      height={1080}
+                      width={1080}
                       className="w-16 h-16 object-cover rounded"
                     />
                     <div className="flex-1 min-w-0">

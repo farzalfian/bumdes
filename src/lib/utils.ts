@@ -8,7 +8,6 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-// Format price to Indonesian Rupiah
 export function formatPrice(price: number): string {
   return new Intl.NumberFormat('id-ID', {
     style: 'currency',
@@ -18,7 +17,6 @@ export function formatPrice(price: number): string {
   }).format(price);
 }
 
-// Generate WhatsApp message for checkout
 export function generateWhatsAppMessage(
   cart: Array<{
     id: number;
