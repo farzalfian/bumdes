@@ -1,7 +1,7 @@
+import LoginClient from "@/components/LoginClient"
 import PageTransition from "@/components/PageTransition"
-import ProductsClient from "@/components/ProductsClient"
-import font from "@/lib/font"
-import type { Metadata, Viewport } from "next"
+import type { Viewport, Metadata } from "next"
+import font from "@/lib/font";
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -13,8 +13,8 @@ export const viewport: Viewport = {
 }
 
 export const metadata: Metadata = {
-  title: "Produk",
-  description: "",
+  title: "Login",
+  description: "Login untuk autentikasi",
   formatDetection: {
     email: false,
     address: false,
@@ -40,11 +40,11 @@ export const metadata: Metadata = {
   },
 }
 
-export default function Page() {
-  return(
+export default function LoginPage() {
+  return (
     <PageTransition>
       <main className={`relative h-full min-h-screen w-full bg-primary-foreground ${font.primary}`}>
-        <ProductsClient />
+        <LoginClient />
       </main>
     </PageTransition>
   )

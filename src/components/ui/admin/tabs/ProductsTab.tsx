@@ -1,210 +1,284 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useTransition, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { Plus, Edit2, Trash2, Search } from "lucide-react"
-import ProductModal from "@/components/ui/admin/modals/ProductModal"
-import { Product } from "@/types"
+import { Plus, Trash2, Edit2, Grid3x3, List, Search, Loader2 } from "lucide-react"
+import ProductModal from "../modals/ProductModal"
+import { deleteProduct, createProduct, updateProduct, searchProducts, getAllProducts } from "@/lib/actions/products"
+import { useDebounce } from "@/hooks/use-debounce"
+import type { Product } from "@/types"
 
-export default function ProductsTab() {
-  const [products, setProducts] = useState<Product[]>([])
-  const [searchTerm, setSearchTerm] = useState("")
+interface ProductsTabProps {
+  initialProducts: Product[]
+}
+
+export default function ProductsTab({ initialProducts }: ProductsTabProps) {
+  const [products, setProducts] = useState<Product[]>(initialProducts)
+  const [searchInput, setSearchInput] = useState("")
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
+  const [isEditing, setIsEditing] = useState(false)
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
+  const [isSearching, setIsSearching] = useState(false)
+  const [isPending, startTransition] = useTransition()
+
+  const debouncedSearchQuery = useDebounce(searchInput, 300)
 
   useEffect(() => {
-    const saved = localStorage.getItem("products")
-    if (saved) {
-      setProducts(JSON.parse(saved))
+    if (debouncedSearchQuery.trim()) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setIsSearching(true)
+      startTransition(async () => {
+        const results = await searchProducts(debouncedSearchQuery)
+        setProducts(results)
+        setIsSearching(false)
+      })
+    } else {
+      setProducts(initialProducts)
+      setIsSearching(false)
     }
-  }, [])
+  }, [debouncedSearchQuery, initialProducts])
 
-  const saveProducts = (newProducts: Product[]) => {
-    setProducts(newProducts)
-    localStorage.setItem("products", JSON.stringify(newProducts))
-  }
-
-  const handleAddProduct = (data: Omit<Product, "id" | "createdAt" | "updatedAt">) => {
-    const newProduct: Product = {
-      ...data,
-      id: Date.now().toString(),
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    }
-    saveProducts([...products, newProduct])
-    setIsModalOpen(false)
-  }
-
-  const handleUpdateProduct = (data: Omit<Product, "id" | "createdAt" | "updatedAt">) => {
-    if (!selectedProduct) return
-    const updated = products.map((p) =>
-      p.id === selectedProduct.id ? { ...p, ...data, updatedAt: new Date().toISOString() } : p,
-    )
-    saveProducts(updated)
-    setIsModalOpen(false)
+  const handleAddProduct = () => {
     setSelectedProduct(null)
+    setIsEditing(false)
+    setIsModalOpen(true)
   }
 
-  const handleDeleteProduct = (id: string) => {
-    saveProducts(products.filter((p) => p.id !== id))
+  const handleEditProduct = (product: Product) => {
+    setSelectedProduct(product)
+    setIsEditing(true)
+    setIsModalOpen(true)
   }
 
-  const filteredProducts = products.filter(
-    (p) =>
-      p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.category.toLowerCase().includes(searchTerm.toLowerCase()),
-  )
-
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: { staggerChildren: 0.05, delayChildren: 0.1 },
-    },
+  const handleDeleteProduct = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this product?")) return
+    try {
+      await deleteProduct(id)
+      setProducts(products.filter((p) => p.id !== id))
+    } catch (error) {
+      console.error("[v0] Error deleting product:", error)
+    }
   }
 
-  const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0 },
-    exit: { opacity: 0, y: -20 },
+  const handleModalSubmit = async (data: Omit<Product, "id" | "createdAt" | "updatedAt">) => {
+    try {
+      if (isEditing && selectedProduct) {
+        await updateProduct(selectedProduct.id, data)
+      } else {
+        await createProduct(data)
+      }
+      setIsModalOpen(false)
+      // Refresh from server after create/update
+      startTransition(async () => {
+        const updated = await getAllProducts()
+        setProducts(updated)
+        // Reset search if active
+        if (searchInput.trim()) {
+          setSearchInput("")
+        }
+      })
+    } catch (error) {
+      console.error("[v0] Error saving product:", error)
+    }
   }
 
   return (
-    <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-6">
-      <motion.div
-        variants={itemVariants}
-        className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between"
-      >
-        <div>
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}>
+      <div className="flex flex-col gap-4 mb-6">
+        <div className="flex items-center justify-between">
           <h2 className="text-2xl font-bold text-foreground">Products</h2>
-          <p className="text-muted-foreground mt-1">{filteredProducts.length} products</p>
+          <motion.button
+            onClick={handleAddProduct}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition font-medium"
+          >
+            <Plus className="w-4 h-4" />
+            Add Product
+          </motion.button>
         </div>
-        <motion.button
-          onClick={() => {
-            setSelectedProduct(null)
-            setIsModalOpen(true)
-          }}
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90 transition font-medium w-full sm:w-auto"
-        >
-          <Plus className="w-4 h-4" />
-          Add Product
-        </motion.button>
-      </motion.div>
 
-      <motion.div variants={itemVariants} className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-        <input
-          type="text"
-          placeholder="Search products..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full pl-10 pr-4 py-2 border border-border rounded-lg bg-input text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 transition"
-        />
-      </motion.div>
-
-      {filteredProducts.length === 0 ? (
-        <motion.div variants={itemVariants} className="bg-card rounded-lg border border-border p-8 text-center">
-          <p className="text-muted-foreground">No products found. Create one to get started!</p>
-        </motion.div>
-      ) : (
-        <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <AnimatePresence>
-            {filteredProducts.map((product) => (
+        <div className="flex gap-2 items-center">
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <input
+              type="text"
+              placeholder="Search products by name, description, or category..."
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              className="w-full pl-10 pr-10 py-2 border border-border rounded-lg bg-input text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 transition"
+            />
+            {isSearching && (
               <motion.div
-                key={product.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                whileHover={{ y: -4 }}
-                className="bg-card rounded-lg border border-border overflow-hidden hover:shadow-lg transition duration-300"
+                animate={{ rotate: 360 }}
+                transition={{ duration: 1, repeat: Number.POSITIVE_INFINITY, ease: "linear" }}
+                className="absolute right-3 top-1/2 -translate-y-1/2"
               >
-                {product.thumbnailURL && (
-                  <div className="w-full h-48 bg-muted overflow-hidden">
+                <Loader2 className="w-4 h-4 text-primary" />
+              </motion.div>
+            )}
+          </div>
+
+          <div className="flex gap-1 bg-muted p-1 rounded-lg">
+            <motion.button
+              onClick={() => setViewMode("grid")}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className={`p-2 rounded transition ${
+                viewMode === "grid"
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Grid3x3 className="w-4 h-4" />
+            </motion.button>
+            <motion.button
+              onClick={() => setViewMode("list")}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className={`p-2 rounded transition ${
+                viewMode === "list"
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <List className="w-4 h-4" />
+            </motion.button>
+          </div>
+        </div>
+      </div>
+
+      {products.length === 0 ? (
+        <div className="text-center py-12">
+          <p className="text-muted-foreground">
+            {searchInput.trim()
+              ? "No products found matching your search."
+              : "No products yet. Create your first product!"}
+          </p>
+        </div>
+      ) : (
+        <>
+          {viewMode === "grid" && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <AnimatePresence>
+                {products.map((product) => (
+                  <motion.div
+                    key={product.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 20 }}
+                    className="bg-card border border-border rounded-lg overflow-hidden hover:shadow-lg transition"
+                  >
+                    <div className="aspect-video bg-muted overflow-hidden">
+                      <img
+                        src={product.thumbnailURL || "/placeholder.svg"}
+                        alt={product.name}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <div className="p-4">
+                      <h3 className="font-bold text-foreground truncate mb-2">{product.name}</h3>
+                      <p className="text-sm text-muted-foreground line-clamp-2 mb-3">{product.description}</p>
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="text-xs px-2 py-1 bg-muted rounded text-foreground">{product.category}</span>
+                        <span className="text-xs font-medium">
+                          {product.stockStatus ? (
+                            <span className="text-green-600">In Stock</span>
+                          ) : (
+                            <span className="text-red-600">Out of Stock</span>
+                          )}
+                        </span>
+                      </div>
+                      <div className="flex gap-2">
+                        <motion.button
+                          onClick={() => handleEditProduct(product)}
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-blue-500/10 text-blue-600 rounded hover:bg-blue-500/20 transition text-sm font-medium"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                          Edit
+                        </motion.button>
+                        <motion.button
+                          onClick={() => handleDeleteProduct(product.id)}
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-destructive/10 text-destructive rounded hover:bg-destructive/20 transition text-sm font-medium"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          Delete
+                        </motion.button>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </div>
+          )}
+
+          {viewMode === "list" && (
+            <div className="space-y-2">
+              <AnimatePresence>
+                {products.map((product) => (
+                  <motion.div
+                    key={product.id}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    className="flex items-center gap-4 p-4 bg-card border border-border rounded-lg hover:shadow-md transition"
+                  >
                     <img
                       src={product.thumbnailURL || "/placeholder.svg"}
                       alt={product.name}
-                      className="w-full h-full object-cover"
+                      className="w-16 h-16 object-cover rounded"
                     />
-                  </div>
-                )}
-
-                <div className="p-4 space-y-3">
-                  <div>
-                    <h3 className="font-semibold text-foreground text-lg">{product.name}</h3>
-                    <p className="text-sm text-muted-foreground line-clamp-2">{product.description}</p>
-                  </div>
-
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">{product.category}</span>
-                    <span
-                      className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
-                        product.stockStatus
-                          ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-100"
-                          : "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-100"
-                      }`}
-                    >
-                      {product.stockStatus ? "In Stock" : "Out"}
-                    </span>
-                  </div>
-
-                  <div className="text-sm text-foreground">
-                    Stock: <span className="font-semibold">{product.stockAmount}</span>
-                  </div>
-
-                  {product.imageURL.length > 0 && (
-                    <div className="flex gap-2 overflow-x-auto pb-2">
-                      {product.imageURL.map((img, idx) => (
-                        <img
-                          key={idx}
-                          src={img || "/placeholder.svg"}
-                          alt={`${product.name} ${idx}`}
-                          className="w-16 h-16 rounded object-cover flex-shrink-0"
-                        />
-                      ))}
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-bold text-foreground truncate">{product.name}</h3>
+                      <p className="text-sm text-muted-foreground line-clamp-1">{product.description}</p>
+                      <div className="flex gap-2 mt-2">
+                        <span className="text-xs px-2 py-1 bg-muted rounded text-foreground">{product.category}</span>
+                        <span className="text-xs font-medium">
+                          {product.stockStatus ? (
+                            <span className="text-green-600">In Stock ({product.stockAmount})</span>
+                          ) : (
+                            <span className="text-red-600">Out of Stock</span>
+                          )}
+                        </span>
+                      </div>
                     </div>
-                  )}
-
-                  <div className="flex gap-2 pt-3 border-t border-border">
-                    <motion.button
-                      onClick={() => {
-                        setSelectedProduct(product)
-                        setIsModalOpen(true)
-                      }}
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      className="flex-1 px-3 py-2 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition text-sm font-medium"
-                    >
-                      <Edit2 className="w-4 h-4 inline mr-2" />
-                      Edit
-                    </motion.button>
-                    <motion.button
-                      onClick={() => handleDeleteProduct(product.id)}
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      className="flex-1 px-3 py-2 bg-destructive/10 text-destructive rounded-lg hover:bg-destructive/20 transition text-sm font-medium"
-                    >
-                      <Trash2 className="w-4 h-4 inline mr-2" />
-                      Delete
-                    </motion.button>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-          </AnimatePresence>
-        </motion.div>
+                    <div className="flex gap-2">
+                      <motion.button
+                        onClick={() => handleEditProduct(product)}
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        className="p-2 bg-blue-500/10 text-blue-600 rounded hover:bg-blue-500/20 transition"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </motion.button>
+                      <motion.button
+                        onClick={() => handleDeleteProduct(product.id)}
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        className="p-2 bg-destructive/10 text-destructive rounded hover:bg-destructive/20 transition"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </motion.button>
+                    </div>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </div>
+          )}
+        </>
       )}
 
       <ProductModal
         isOpen={isModalOpen}
-        onClose={() => {
-          setIsModalOpen(false)
-          setSelectedProduct(null)
-        }}
-        onSubmit={selectedProduct ? handleUpdateProduct : handleAddProduct}
+        onClose={() => setIsModalOpen(false)}
+        onSubmit={handleModalSubmit}
         product={selectedProduct}
-        isEditing={!!selectedProduct}
+        isEditing={isEditing}
       />
     </motion.div>
   )

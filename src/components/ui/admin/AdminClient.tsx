@@ -2,29 +2,32 @@
 
 import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import Login from "@/components/ui/admin/Login"
 import Dashboard from "@/components/ui/admin/Dashboard"
+import type { Product, ImageGallery } from "@/types"
+import { redirect } from "next/navigation"
+import { logoutActions } from "@/lib/actions/logoutActions"
 
-export default function AdminClient() {
+interface AdminClientProps {
+  initialProducts: Product[]
+  initialGalleries: ImageGallery[]
+  loginStatus: boolean
+}
+
+export default function AdminClient({ initialProducts, initialGalleries, loginStatus }: AdminClientProps) {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    const auth = localStorage.getItem("adminAuth")
-    if (auth === "true") {
+    if (loginStatus) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsAuthenticated(true)
     }
     setIsLoading(false)
-  }, [])
-
-  const handleLogin = () => {
-    setIsAuthenticated(true)
-    localStorage.setItem("adminAuth", "true")
-  }
+  }, [loginStatus])
 
   const handleLogout = () => {
+    logoutActions()
     setIsAuthenticated(false)
-    localStorage.removeItem("adminAuth")
   }
 
   if (isLoading) {
@@ -41,10 +44,13 @@ export default function AdminClient() {
 
   return (
     <AnimatePresence mode="wait">
-      {!isAuthenticated ? (
-        <Login key="login" onLogin={handleLogin} />
-      ) : (
-        <Dashboard key="dashboard" onLogout={handleLogout} />
+      {!isAuthenticated ? redirect("/login") : (
+        <Dashboard
+          key="dashboard"
+          onLogout={handleLogout}
+          initialProducts={initialProducts}
+          initialGalleries={initialGalleries}
+        />
       )}
     </AnimatePresence>
   )

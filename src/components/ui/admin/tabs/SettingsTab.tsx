@@ -4,28 +4,25 @@ import type React from "react"
 
 import { useState } from "react"
 import { motion } from "framer-motion"
-import { Key, CheckCircle, AlertCircle } from "lucide-react"
+import { changeAdminPassword } from "@/lib/actions/admin"
+import { Eye, EyeOff, CheckCircle, AlertCircle } from "lucide-react"
 
 export default function SettingsTab() {
   const [currentPassword, setCurrentPassword] = useState("")
   const [newPassword, setNewPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
-  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false)
+  const [showNewPassword, setShowNewPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
 
-  const ADMIN_PASSWORD = "admin123"
-
-  const handleChangePassword = async (e: React.FormEvent) => {
+  const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault()
-    setMessage(null)
 
+    // Validation
     if (!currentPassword || !newPassword || !confirmPassword) {
       setMessage({ type: "error", text: "All fields are required" })
-      return
-    }
-
-    if (currentPassword !== ADMIN_PASSWORD) {
-      setMessage({ type: "error", text: "Current password is incorrect" })
       return
     }
 
@@ -40,123 +37,159 @@ export default function SettingsTab() {
     }
 
     setIsLoading(true)
-    await new Promise((resolve) => setTimeout(resolve, 500))
+    try {
+      const result = await changeAdminPassword(currentPassword, newPassword)
 
-    localStorage.setItem("adminPassword", newPassword)
-    setMessage({ type: "success", text: "Password changed successfully!" })
-    setCurrentPassword("")
-    setNewPassword("")
-    setConfirmPassword("")
-    setIsLoading(false)
-  }
-
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: { staggerChildren: 0.1, delayChildren: 0.1 },
-    },
-  }
-
-  const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0 },
+      if (result.success) {
+        setMessage({ type: "success", text: result.message })
+        setCurrentPassword("")
+        setNewPassword("")
+        setConfirmPassword("")
+        // Clear message after 3 seconds
+        setTimeout(() => setMessage(null), 3000)
+      } else {
+        setMessage({ type: "error", text: result.message })
+      }
+    } catch (error) {
+      setMessage({ type: "error", text: "An error occurred. Please try again." })
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
-    <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-8">
-      <motion.div variants={itemVariants}>
-        <h2 className="text-2xl font-bold text-foreground">Settings</h2>
-        <p className="text-muted-foreground mt-2">Manage your admin account settings</p>
-      </motion.div>
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}>
+      <h2 className="text-2xl font-bold text-foreground mb-6">Settings</h2>
 
-      <motion.div variants={itemVariants} className="bg-card rounded-lg border border-border p-6 max-w-md">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-            <Key className="w-5 h-5 text-primary" />
-          </div>
-          <h3 className="text-lg font-semibold text-foreground">Change Password</h3>
-        </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.1 }}
+          className="bg-card border border-border rounded-lg p-6"
+        >
+          <h3 className="font-bold text-foreground mb-4 text-lg">Change Password</h3>
 
-        <form onSubmit={handleChangePassword} className="space-y-4">
-          <motion.div variants={itemVariants}>
-            <label className="block text-sm font-medium text-foreground mb-2">Current Password</label>
-            <input
-              type="password"
-              value={currentPassword}
-              onChange={(e) => setCurrentPassword(e.target.value)}
-              placeholder="Enter current password"
-              className="w-full px-4 py-2 border border-border rounded-lg bg-input text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 transition disabled:opacity-50"
-              disabled={isLoading}
-            />
-          </motion.div>
+          <form onSubmit={handlePasswordChange} className="space-y-4">
+            <div>
+              <label className="text-sm font-medium text-foreground block mb-2">Current Password</label>
+              <div className="relative">
+                <input
+                  type={showCurrentPassword ? "text" : "password"}
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  placeholder="Enter your current password"
+                  className="w-full px-3 py-2 pr-10 border border-border rounded-lg bg-input text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 transition"
+                />
+                <motion.button
+                  type="button"
+                  onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showCurrentPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </motion.button>
+              </div>
+            </div>
 
-          <motion.div variants={itemVariants}>
-            <label className="block text-sm font-medium text-foreground mb-2">New Password</label>
-            <input
-              type="password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              placeholder="Enter new password"
-              className="w-full px-4 py-2 border border-border rounded-lg bg-input text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 transition disabled:opacity-50"
-              disabled={isLoading}
-            />
-          </motion.div>
+            <div>
+              <label className="text-sm font-medium text-foreground block mb-2">New Password</label>
+              <div className="relative">
+                <input
+                  type={showNewPassword ? "text" : "password"}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Enter new password (min 6 characters)"
+                  className="w-full px-3 py-2 pr-10 border border-border rounded-lg bg-input text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 transition"
+                />
+                <motion.button
+                  type="button"
+                  onClick={() => setShowNewPassword(!showNewPassword)}
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </motion.button>
+              </div>
+            </div>
 
-          <motion.div variants={itemVariants}>
-            <label className="block text-sm font-medium text-foreground mb-2">Confirm New Password</label>
-            <input
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder="Confirm new password"
-              className="w-full px-4 py-2 border border-border rounded-lg bg-input text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 transition disabled:opacity-50"
-              disabled={isLoading}
-            />
-          </motion.div>
+            <div>
+              <label className="text-sm font-medium text-foreground block mb-2">Confirm New Password</label>
+              <div className="relative">
+                <input
+                  type={showConfirmPassword ? "text" : "password"}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Confirm new password"
+                  className="w-full px-3 py-2 pr-10 border border-border rounded-lg bg-input text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 transition"
+                />
+                <motion.button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </motion.button>
+              </div>
+            </div>
 
-          {message && (
-            <motion.div
-              variants={itemVariants}
-              className={`flex items-center gap-3 p-3 rounded-lg ${
-                message.type === "success"
-                  ? "bg-green-100 border border-green-300 dark:bg-green-900 dark:border-green-700"
-                  : "bg-destructive/10 border border-destructive/30"
-              }`}
-            >
-              {message.type === "success" ? (
-                <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
-              ) : (
-                <AlertCircle className="w-5 h-5 text-destructive" />
-              )}
-              <p
-                className={`text-sm font-medium ${
-                  message.type === "success" ? "text-green-800 dark:text-green-100" : "text-destructive"
+            {message && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg ${
+                  message.type === "success"
+                    ? "bg-green-500/10 text-green-600 border border-green-500/20"
+                    : "bg-red-500/10 text-red-600 border border-red-500/20"
                 }`}
               >
-                {message.text}
+                {message.type === "success" ? (
+                  <CheckCircle className="w-4 h-4 flex-shrink-0" />
+                ) : (
+                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                )}
+                <span className="text-sm font-medium">{message.text}</span>
+              </motion.div>
+            )}
+
+            <motion.button
+              type="submit"
+              disabled={isLoading}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className="w-full px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition font-medium"
+            >
+              {isLoading ? "Updating..." : "Update Password"}
+            </motion.button>
+          </form>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.2 }}
+          className="bg-card border border-border rounded-lg p-6"
+        >
+          <h3 className="font-bold text-foreground mb-4 text-lg">Admin Information</h3>
+          <p className="text-sm text-muted-foreground mb-4">
+            Manage your admin profile and account details. Keep your password secure and update it regularly.
+          </p>
+          <div className="space-y-3 text-sm">
+            <div className="p-3 bg-muted/50 rounded-lg">
+              <p className="text-muted-foreground mb-1">Current Status</p>
+              <p className="text-green-600 font-medium flex items-center gap-2">
+                <span className="w-2 h-2 bg-green-600 rounded-full"></span>
+                Active
               </p>
-            </motion.div>
-          )}
-
-          <motion.button
-            type="submit"
-            disabled={isLoading}
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            className="w-full bg-primary text-primary-foreground font-semibold py-2 rounded-lg hover:bg-primary/90 transition disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isLoading ? "Updating..." : "Update Password"}
-          </motion.button>
-        </form>
-      </motion.div>
-
-      <motion.div variants={itemVariants} className="bg-accent/10 border border-accent rounded-lg p-4">
-        <p className="text-sm text-foreground">
-          <span className="font-semibold">Note:</span> This demo stores password changes locally. In a production
-          environment, ensure passwords are hashed and stored securely on a server.
-        </p>
-      </motion.div>
+            </div>
+          </div>
+        </motion.div>
+      </div>
     </motion.div>
   )
 }

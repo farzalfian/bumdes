@@ -6,12 +6,15 @@ import { LogOut, Package, Images, SettingsIcon } from "lucide-react"
 import ProductsTab from "./tabs/ProductsTab"
 import GalleryTab from "./tabs/GalleryTab"
 import SettingsTab from "./tabs/SettingsTab"
+import type { Product, ImageGallery } from "@/types"
 
 interface DashboardProps {
   onLogout: () => void
+  initialProducts: Product[]
+  initialGalleries: ImageGallery[]
 }
 
-export default function Dashboard({ onLogout }: DashboardProps) {
+export default function Dashboard({ onLogout, initialProducts, initialGalleries }: DashboardProps) {
   const [activeTab, setActiveTab] = useState("products")
 
   const tabs = [
@@ -101,8 +104,8 @@ export default function Dashboard({ onLogout }: DashboardProps) {
 
       <motion.main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <AnimatePresence mode="wait">
-          {activeTab === "products" && <ProductsTab key="products" />}
-          {activeTab === "gallery" && <GalleryTab key="gallery" />}
+          {activeTab === "products" && <ProductsTab key="products" initialProducts={initialProducts} />}
+          {activeTab === "gallery" && <GalleryTab key="gallery" initialGalleries={initialGalleries} />}
           {activeTab === "settings" && <SettingsTab key="settings" />}
         </AnimatePresence>
       </motion.main>

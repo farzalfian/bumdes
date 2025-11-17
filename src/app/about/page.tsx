@@ -1,6 +1,7 @@
 import PageTransition from "@/components/PageTransition"
 import type { Metadata, Viewport } from "next"
-import AboutContactClient from "./AboutContactClient"
+import AboutContactClient from "../../components/AboutContactClient"
+import font from "@/lib/font"
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -42,7 +43,9 @@ export const metadata: Metadata = {
 export default function Page() {
   return (
     <PageTransition>
-      <AboutContactClient />
+      <main className={`relative h-full min-h-screen w-full bg-primary-foreground  ${font.primary}`}>
+        <AboutContactClient />
+      </main>
     </PageTransition>
   )
 }

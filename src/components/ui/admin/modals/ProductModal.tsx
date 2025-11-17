@@ -4,20 +4,8 @@ import type React from "react"
 
 import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { X, Upload, ImageIcon } from "lucide-react"
-
-interface Product {
-  id: string
-  name: string
-  description: string
-  category: string
-  stockStatus: boolean
-  stockAmount: number
-  thumbnailURL: string
-  imageURL: string[]
-  createdAt: string
-  updatedAt: string
-}
+import { X, Upload, ImageIcon, Minus, Plus, AlertCircle, Loader } from "lucide-react"
+import type { Product } from "@/types"
 
 interface ProductModalProps {
   isOpen: boolean
@@ -38,6 +26,11 @@ export default function ProductModal({ isOpen, onClose, onSubmit, product, isEdi
     imageURL: [] as string[],
   })
 
+  const [uploading, setUploading] = useState(false)
+  const [error, setError] = useState("")
+  const [previewThumbnail, setPreviewThumbnail] = useState<string>("")
+  const [previewImages, setPreviewImages] = useState<string[]>([])
+
   useEffect(() => {
     if (product) {
       setFormData({
@@ -49,6 +42,8 @@ export default function ProductModal({ isOpen, onClose, onSubmit, product, isEdi
         thumbnailURL: product.thumbnailURL,
         imageURL: product.imageURL,
       })
+      setPreviewThumbnail(product.thumbnailURL)
+      setPreviewImages(product.imageURL)
     } else {
       setFormData({
         name: "",
@@ -59,25 +54,68 @@ export default function ProductModal({ isOpen, onClose, onSubmit, product, isEdi
         thumbnailURL: "",
         imageURL: [],
       })
+      setPreviewThumbnail("")
+      setPreviewImages([])
     }
+    setError("")
   }, [product, isOpen])
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, isThumb: boolean) => {
+  const uploadFile = async (file: File, isMultiple = false): Promise<string | string[] | null> => {
+    try {
+      const fd = new FormData()
+
+      if (isMultiple) {
+        fd.append("files", file)
+        fd.append("multiple", "true")
+      } else {
+        fd.append("file", file)
+        fd.append("multiple", "false")
+      }
+
+      const response = await fetch("/api/upload", {
+        method: "POST",
+        body: fd,
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || "Upload failed")
+      }
+
+      const data = await response.json()
+      return isMultiple ? data.urls : data.url
+    } catch (err) {
+      throw new Error(err instanceof Error ? err.message : "Upload failed")
+    }
+  }
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>, isThumb: boolean) => {
     const files = e.target.files
     if (!files) return
 
-    Array.from(files).forEach((file) => {
-      const reader = new FileReader()
-      reader.onload = (event) => {
-        const base64 = event.target?.result as string
+    setUploading(true)
+    setError("")
+
+    try {
+      for (const file of Array.from(files)) {
+        const url = await uploadFile(file, false)
+
         if (isThumb) {
-          setFormData({ ...formData, thumbnailURL: base64 })
+          setFormData({ ...formData, thumbnailURL: url as string })
+          setPreviewThumbnail(url as string)
         } else {
-          setFormData({ ...formData, imageURL: [...formData.imageURL, base64] })
+          setFormData((prev) => ({
+            ...prev,
+            imageURL: [...prev.imageURL, url as string],
+          }))
+          setPreviewImages((prev) => [...prev, url as string])
         }
       }
-      reader.readAsDataURL(file)
-    })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "File upload failed")
+    } finally {
+      setUploading(false)
+    }
   }
 
   const removeImage = (index: number) => {
@@ -85,16 +123,18 @@ export default function ProductModal({ isOpen, onClose, onSubmit, product, isEdi
       ...formData,
       imageURL: formData.imageURL.filter((_, i) => i !== index),
     })
+    setPreviewImages((prev) => prev.filter((_, i) => i !== index))
   }
 
   const removeThumbnail = () => {
     setFormData({ ...formData, thumbnailURL: "" })
+    setPreviewThumbnail("")
   }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!formData.name || !formData.category) {
-      alert("Please fill in all required fields")
+      setError("Please fill in all required fields")
       return
     }
     onSubmit(formData)
@@ -140,6 +180,13 @@ export default function ProductModal({ isOpen, onClose, onSubmit, product, isEdi
             </div>
 
             <form onSubmit={handleSubmit} className="p-6 space-y-5">
+              {error && (
+                <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/30 rounded-lg">
+                  <AlertCircle className="w-5 h-5 text-destructive flex-shrink-0" />
+                  <p className="text-sm text-destructive">{error}</p>
+                </div>
+              )}
+
               <div>
                 <label className="block text-sm font-medium text-foreground mb-2">Product Name *</label>
                 <input
@@ -180,13 +227,46 @@ export default function ProductModal({ isOpen, onClose, onSubmit, product, isEdi
 
               <div>
                 <label className="block text-sm font-medium text-foreground mb-2">Stock Amount</label>
-                <input
-                  type="number"
-                  value={formData.stockAmount}
-                  onChange={(e) => setFormData({ ...formData, stockAmount: Number.parseInt(e.target.value) || 0 })}
-                  placeholder="0"
-                  className="w-full px-4 py-2 border border-border rounded-lg bg-input text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 transition"
-                />
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        stockAmount: Math.max(0, prev.stockAmount - 1),
+                      }))
+                    }
+                    className="p-2 rounded-lg border border-border hover:bg-muted transition active:scale-95"
+                  >
+                    <Minus size={16} />
+                  </button>
+
+                  <input
+                    type="number"
+                    value={formData.stockAmount}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        stockAmount: Number.parseInt(e.target.value) || 0,
+                      })
+                    }
+                    placeholder="0"
+                    className="w-full text-center px-3 py-2 border border-border rounded-lg bg-input text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 transition"
+                  />
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        stockAmount: prev.stockAmount + 1,
+                      }))
+                    }
+                    className="p-2 rounded-lg border border-border hover:bg-muted transition active:scale-95"
+                  >
+                    <Plus size={16} />
+                  </button>
+                </div>
               </div>
 
               <div className="flex items-center gap-3">
@@ -204,10 +284,10 @@ export default function ProductModal({ isOpen, onClose, onSubmit, product, isEdi
 
               <div className="border-t border-border pt-4">
                 <label className="block text-sm font-medium text-foreground mb-3">Product Thumbnail</label>
-                {formData.thumbnailURL ? (
+                {previewThumbnail ? (
                   <motion.div className="relative w-32 h-32 rounded-lg overflow-hidden border border-border">
                     <img
-                      src={formData.thumbnailURL || "/placeholder.svg"}
+                      src={previewThumbnail || "/placeholder.svg"}
                       alt="Thumbnail"
                       className="w-full h-full object-cover"
                     />
@@ -222,15 +302,19 @@ export default function ProductModal({ isOpen, onClose, onSubmit, product, isEdi
                     </motion.button>
                   </motion.div>
                 ) : (
-                  <label className="flex items-center justify-center w-full px-4 py-6 border-2 border-dashed border-border rounded-lg cursor-pointer hover:bg-muted/50 transition">
+                  <label
+                    className="flex items-center justify-center w-full px-4 py-6 border-2 border-dashed border-border rounded-lg cursor-pointer hover:bg-muted/50 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    style={{ pointerEvents: uploading ? "none" : "auto" }}
+                  >
                     <div className="flex items-center gap-2 text-muted-foreground">
-                      <Upload className="w-5 h-5" />
-                      <span className="text-sm">Click to upload thumbnail</span>
+                      {uploading ? <Loader className="w-5 h-5 animate-spin" /> : <Upload className="w-5 h-5" />}
+                      <span className="text-sm">{uploading ? "Uploading..." : "Click to upload thumbnail"}</span>
                     </div>
                     <input
                       type="file"
                       accept="image/*"
                       onChange={(e) => handleFileChange(e, true)}
+                      disabled={uploading}
                       className="hidden"
                     />
                   </label>
@@ -241,7 +325,7 @@ export default function ProductModal({ isOpen, onClose, onSubmit, product, isEdi
                 <label className="block text-sm font-medium text-foreground mb-3">Product Images</label>
                 <div className="grid grid-cols-3 gap-2 mb-3">
                   <AnimatePresence>
-                    {formData.imageURL.map((img, idx) => (
+                    {previewImages.map((img, idx) => (
                       <motion.div
                         key={idx}
                         initial={{ opacity: 0, scale: 0.8 }}
@@ -267,16 +351,20 @@ export default function ProductModal({ isOpen, onClose, onSubmit, product, isEdi
                     ))}
                   </AnimatePresence>
                 </div>
-                <label className="flex items-center justify-center w-full px-4 py-6 border-2 border-dashed border-border rounded-lg cursor-pointer hover:bg-muted/50 transition">
+                <label
+                  className="flex items-center justify-center w-full px-4 py-6 border-2 border-dashed border-border rounded-lg cursor-pointer hover:bg-muted/50 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{ pointerEvents: uploading ? "none" : "auto" }}
+                >
                   <div className="flex items-center gap-2 text-muted-foreground">
-                    <ImageIcon className="w-5 h-5" />
-                    <span className="text-sm">Click to upload product images</span>
+                    {uploading ? <Loader className="w-5 h-5 animate-spin" /> : <ImageIcon className="w-5 h-5" />}
+                    <span className="text-sm">{uploading ? "Uploading..." : "Click to upload product images"}</span>
                   </div>
                   <input
                     type="file"
                     multiple
                     accept="image/*"
                     onChange={(e) => handleFileChange(e, false)}
+                    disabled={uploading}
                     className="hidden"
                   />
                 </label>
@@ -296,7 +384,8 @@ export default function ProductModal({ isOpen, onClose, onSubmit, product, isEdi
                   type="submit"
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
-                  className="flex-1 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition font-medium"
+                  className="flex-1 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition font-medium disabled:opacity-50"
+                  disabled={uploading}
                 >
                   {isEditing ? "Update" : "Create"}
                 </motion.button>

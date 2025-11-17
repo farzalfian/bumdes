@@ -4,6 +4,8 @@ import Header from "@/components/Header"
 import Footer from "@/components/Footer"
 import { ThemeProvider } from "@/components/ThemeProvider"
 import { CartProvider } from "@/context/CartContext"
+import { Toaster } from "@/components/ui/toaster";
+
 
 export const metadata: Metadata = {
   title: {
@@ -52,6 +54,7 @@ export default async function RootLayout({
             <Header />
             <div id="page-content">{children}</div>
             <Footer />
+            <Toaster />
           </CartProvider>
         </ThemeProvider>
       </body>

@@ -1,16 +1,8 @@
-import { Schema, model, models } from "mongoose";
+"use server"
+import { ImageGallery } from "@/types";
+import mongoose from "mongoose";
 
-export interface ImageGallery {
-  id: string;
-  name: string;
-  description: string;
-  imageURL: string;
-  releaseDate: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-const ImageGallerySchema = new Schema<ImageGallery>(
+const ImageGallerySchema = new mongoose.Schema<ImageGallery>(
   {
     id: { type: String, required: true, unique: true },
     name: { type: String, required: true },
@@ -24,5 +16,5 @@ const ImageGallerySchema = new Schema<ImageGallery>(
 );
 
 const ImageGalleryModel =
-  models.ImageGallery || model<ImageGallery>("ImageGallery", ImageGallerySchema);
+  mongoose.models.ImageGallery || mongoose.model<ImageGallery>("ImageGallery", ImageGallerySchema);
 export default ImageGalleryModel;

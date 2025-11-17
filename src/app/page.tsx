@@ -4,19 +4,8 @@ import { useState, useEffect } from "react"
 import Link from "next/link"
 import { ArrowRight, Sparkles, Users, Award, ShoppingBag, Leaf, Heart } from "lucide-react"
 import PageTransition from "@/components/PageTransition"
-
-interface Product {
-  id: string
-  name: string
-  description: string
-  category: string
-  stockStatus: boolean
-  stockAmount: number
-  thumbnailURL: string
-  imageURL: string[]
-  createdAt: string
-  updatedAt: string
-}
+import { Product } from "@/types"
+import font from "@/lib/font";
 
 export default function Home() {
   const [currentSlide, setCurrentSlide] = useState(0)
@@ -104,7 +93,7 @@ export default function Home() {
 
   return (
     <PageTransition>
-      <main className="min-h-screen bg-gradient-to-b from-white to-[#F5F8E8]">
+      <main className={`min-h-screen bg-linear-to-b from-white to-[#F5F8E8] ${font.primary}`}>
         {/* Hero Section */}
         <section className="relative h-[600px] overflow-hidden">
           {heroSlides.map((slide, index) => (
@@ -118,7 +107,7 @@ export default function Home() {
                 className="absolute inset-0 bg-cover bg-center"
                 style={{ backgroundImage: `url(${slide.image})` }}
               />
-              <div className="absolute inset-0 bg-gradient-to-r from-[#556B2F]/95 via-[#556B2F]/80 to-transparent" />
+              <div className="absolute inset-0 bg-linear-to-r from-[#556B2F]/95 via-[#556B2F]/80 to-transparent" />
             </div>
           ))}
 
@@ -139,7 +128,7 @@ export default function Home() {
               <div className="flex flex-wrap gap-4">
                 <Link
                   href="/products"
-                  className="group px-8 py-4 bg-gradient-to-r from-[#8FA31E] to-[#C6D870] text-white font-semibold rounded-full hover:shadow-2xl hover:shadow-[#8FA31E]/40 transition-all duration-300 flex items-center gap-2 hover:scale-105"
+                  className="group px-8 py-4 bg-linear-to-r from-[#8FA31E] to-[#C6D870] text-white font-semibold rounded-full hover:shadow-2xl hover:shadow-[#8FA31E]/40 transition-all duration-300 flex items-center gap-2 hover:scale-105"
                 >
                   Belanja Sekarang
                   <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
@@ -187,7 +176,7 @@ export default function Home() {
                   key={index}
                   className="group p-6 bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 border border-[#EFF5D2]/20"
                 >
-                  <div className="w-14 h-14 bg-gradient-to-br from-[#8FA31E] to-[#C6D870] rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300 shadow-lg">
+                  <div className="w-14 h-14 bg-linear-to-br from-[#8FA31E] to-[#C6D870] rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300 shadow-lg">
                     <feature.icon className="w-7 h-7 text-white" />
                   </div>
                   <h3 className="text-lg font-bold text-[#556B2F] mb-2">{feature.title}</h3>
@@ -282,7 +271,7 @@ export default function Home() {
                         <button 
                           className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 shadow-lg ${
                             product.stockStatus
-                              ? "bg-gradient-to-br from-[#8FA31E] to-[#C6D870] text-white hover:scale-110"
+                              ? "bg-linear-to-br from-[#8FA31E] to-[#C6D870] text-white hover:scale-110"
                               : "bg-gray-300 text-gray-500 cursor-not-allowed"
                           }`}
                           onClick={(e) => {
@@ -305,7 +294,7 @@ export default function Home() {
                 <p className="text-gray-500 text-lg mb-4">Belum ada produk tersedia</p>
                 <Link
                   href="/admin"
-                  className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#8FA31E] to-[#C6D870] text-white font-semibold rounded-full hover:shadow-xl transition-all duration-300"
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-linear-to-r from-[#8FA31E] to-[#C6D870] text-white font-semibold rounded-full hover:shadow-xl transition-all duration-300"
                 >
                   Tambah Produk
                 </Link>
@@ -316,7 +305,7 @@ export default function Home() {
               <div className="text-center">
                 <Link
                   href="/products"
-                  className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-[#8FA31E] to-[#C6D870] text-white font-semibold rounded-full hover:shadow-xl hover:shadow-[#8FA31E]/30 transition-all duration-300 hover:scale-105"
+                  className="inline-flex items-center gap-2 px-8 py-4 bg-linear-to-r from-[#8FA31E] to-[#C6D870] text-white font-semibold rounded-full hover:shadow-xl hover:shadow-[#8FA31E]/30 transition-all duration-300 hover:scale-105"
                 >
                   Lihat Semua Produk
                   <ArrowRight className="w-5 h-5" />

@@ -1,19 +1,8 @@
-import { Schema, model, models } from "mongoose";
+"use server"
+import { Product } from "@/types";
+import mongoose from "mongoose";
 
-export interface Product {
-  id: string;
-  name: string;
-  description: string;
-  category: string;
-  thumbnailURL: string;
-  imageURL: string[];
-  stockStatus: boolean;
-  stockAmount: number;
-  createdAt: string;
-  updatedAt: string;
-}
-
-const ProductSchema = new Schema<Product>(
+const ProductSchema = new mongoose.Schema<Product>(
   {
     id: { type: String, required: true, unique: true },
     name: { type: String, required: true },
@@ -29,5 +18,5 @@ const ProductSchema = new Schema<Product>(
   { collection: "products" }
 );
 
-const ProductModel = models.Product || model<Product>("Product", ProductSchema);
+const ProductModel = mongoose.models.Product || mongoose.model<Product>("Product", ProductSchema);
 export default ProductModel;

@@ -1,4 +1,5 @@
-import { Schema, model, models } from "mongoose";
+"use server"
+import mongoose from "mongoose";
 
 export interface Admin {
   id: string;
@@ -8,7 +9,7 @@ export interface Admin {
   updatedAt: string;
 }
 
-const AdminSchema = new Schema<Admin>(
+const AdminSchema = new mongoose.Schema<Admin>(
   {
     id: { type: String, required: true, unique: true },
     name: { type: String, required: true },
@@ -19,5 +20,5 @@ const AdminSchema = new Schema<Admin>(
   { collection: "admins" }
 );
 
-const AdminModel = models.Admin || model<Admin>("Admin", AdminSchema);
+const AdminModel = mongoose.models.Admin || mongoose.model<Admin>("Admin", AdminSchema);
 export default AdminModel;
