@@ -1,6 +1,5 @@
 import PageTransition from "@/components/PageTransition"
 import ProductsClient from "@/components/ProductsClient"
-import { searchProducts } from "@/lib/actions/products"
 import font from "@/lib/font"
 import type { Metadata, Viewport } from "next"
 
@@ -53,19 +52,12 @@ export default async function Page({
   const page = typeof params.page === "string" ? Number(params.page) : 1
   const pageSize = typeof params.max === "string" ? Number(params.max) : 6
 
-  const products = await searchProducts({
-    search,
-    category,
-    page,
-    max: pageSize,
-  })
-
   return (
     <PageTransition>
       <main className={`relative h-full min-h-screen w-full bg-primary-foreground ${font.primary}`}>
         <ProductsClient
-          products ={products.data}
-          total ={products.total}
+          products ={[]}
+          total ={0}
           pageSize={pageSize}
           currentPage={page}
           search={search}
